@@ -1,5 +1,3 @@
-Shareapp.py614 linespyindex.html387 lineshtmlpyproject.toml13 linestomlNDescribe this code in 350 characters for github respisotryAngola Power Schedule web app for ENE showing real-time power outage schedules across 8 municipalities (Luanda, Belas, Viana, etc.) with 40+ areas. Features dynamic schedule generation based on economic status (good/moderate/poor/critical) that adjusts power-on/off durations. Built with Flask, Bootstrap dark theme, responsive design.RetryNdraft up a readmeREADME.md - Angola Power ScheduleDocument # Angola Power Schedule - ENE
-
 A Flask-based web application that provides real-time power outage schedules for various municipalities and areas across Angola. The system dynamically adjusts power schedules based on economic conditions, helping residI've created a comprehensive README for your Angola Power Schedule application. It includes:
 
 Overview of features and capabilities
