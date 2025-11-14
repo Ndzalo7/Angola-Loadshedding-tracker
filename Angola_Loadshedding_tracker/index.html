@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angola Power Schedule - ENE</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+
+<body>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="text-center">
+                    <h1 class="display-4 mb-2">
+                        <i class="fas fa-bolt text-warning me-3"></i>
+                        Angola Power Schedule
+                    </h1>
+                    <p class="lead text-muted">ENE - Real-time Power Outage Information</p>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap mb-3">
+                        <div class="badge bg-info fs-6 px-3 py-2">
+                            <i class="fas fa-clock me-1"></i>
+                            Current Time: <span id="current-time">{{ current_time or "Loading..." }}</span>
+                        </div>
+                        {% if economic_status %}
+                        <div
+                            class="badge bg-{% if economic_status == 'good' %}success{% elif economic_status == 'moderate' %}info{% elif economic_status == 'poor' %}warning{% else %}danger{% endif %} fs-6 px-3 py-2">
+                            <i class="fas fa-chart-line me-1"></i>
+                            Economic Status: <strong>{{ economic_status_name }}</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Economic Status Control -->
+        {% if economic_status and available_statuses %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            Economic Status Control
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <p class="mb-2">
+                                    <strong>Current Status:</strong>
+                                    <span
+                                        class="badge bg-{% if economic_status == 'good' %}success{% elif economic_status == 'moderate' %}info{% elif economic_status == 'poor' %}warning{% else %}danger{% endif %}">
+                                        {{ economic_status_name }}
+                                    </span>
+                                </p>
+                                <p class="text-muted small mb-0">{{ economic_status_description }}</p>
+                                <p class="text-muted small mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Changing the economic status will regenerate all schedules automatically.
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="economic-status-select" class="form-label">Update Economic Status:</label>
+                                <select class="form-select" id="economic-status-select">
+                                    {% for status_key in available_statuses %}
+                                    <option value="{{ status_key }}" {% if economic_status==status_key %}selected{%
+                                        endif %}>
+                                        {{ status_key|title }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-primary mt-2 w-100"
+                                    id="update-economic-status-btn">
+                                    <i class="fas fa-sync me-2"></i>
+                                    Update Status & Regenerate Schedules
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Selection Form -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            Select Location
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{{ url_for('schedule_page') }}" class="row g-3">
+                            <div class="col-md-6">
+                                <label for="municipality" class="form-label">Municipality</label>
+                                <select class="form-select" id="municipality" name="municipality" required>
+                                    <option value="">Choose Municipality...</option>
+                                    {% for muni in municipalities %}
+                                    <option value="{{ muni.name }}" {% if selected_municipality==muni.name %}selected{%
+                                        endif %}>
+                                        {{ muni.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="area" class="form-label">Area</label>
+                                <select class="form-select" id="area" name="area" required>
+                                    <option value="">Choose Area...</option>
+                                    {% if selected_municipality %}
+                                    {% for muni in municipalities %}
+                                    {% if muni.name == selected_municipality %}
+                                    {% for area in muni.areas %}
+                                    <option value="{{ area }}" {% if selected_area==area %}selected{% endif %}>
+                                        {{ area }}
+                                    </option>
+                                    {% endfor %}
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>
+                                    View Schedule
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        {% if error %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    {{ error }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Current Status -->
+        {% if current_status %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-{% if current_status == 'Power on' %}success{% else %}danger{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="card-title">
+                            {% if current_status == "Power on" %}
+                            <i class="fas fa-lightbulb text-success me-2"></i>
+                            <span class="text-success">Power ON</span>
+                            {% else %}
+                            <i class="fas fa-power-off text-danger me-2"></i>
+                            <span class="text-danger">Power OFF</span>
+                            {% endif %}
+                        </h3>
+                        <p class="card-text">
+                            Current status for <strong>{{ selected_area }}, {{ selected_municipality }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Schedule Table -->
+        {% if schedule %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            Power Schedule - {{ selected_area }}, {{ selected_municipality }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Time Period
+                                        </th>
+                                        <th scope="col">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Status
+                                        </th>
+                                        <th scope="col">
+                                            <i class="fas fa-hourglass-half me-1"></i>
+                                            Duration
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for slot in schedule %}
+                                    <tr
+                                        class="{% if slot.status == 'Power on' %}table-success{% else %}table-danger{% endif %}">
+                                        <td class="fw-bold">
+                                            {{ slot.start }} - {{ slot.end }}
+                                        </td>
+                                        <td>
+                                            {% if slot.status == "Power on" %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-lightbulb me-1"></i>
+                                                Power ON
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-power-off me-1"></i>
+                                                Power OFF
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted">
+                                            <span class="duration-calc" data-start="{{ slot.start }}"
+                                                data-end="{{ slot.end }}">
+                                                Calculating...
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Information Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-info-circle fa-2x text-info mb-3"></i>
+                        <h6 class="card-title">Real-time Updates</h6>
+                        <p class="card-text small">
+                            Current power status is calculated based on your local time and the official ENE schedule.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-map fa-2x text-success mb-3"></i>
+                        <h6 class="card-title">Coverage Areas</h6>
+                        <p class="card-text small">
+                            Schedules available for {{ municipalities|length }} municipalities with comprehensive area
+                            coverage.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-mobile-alt fa-2x text-warning mb-3"></i>
+                        <h6 class="card-title">Mobile Friendly</h6>
+                        <p class="card-text small">
+                            Access power schedules anytime, anywhere with our responsive mobile design.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center py-4 mt-5 border-top">
+            <p class="text-muted mb-0">
+                <i class="fas fa-copyright me-1"></i>
+                {{ "2025" }} ENE Angola - Power Schedule Information System
+            </p>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Update current time every minute
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const timeElement = document.getElementById('current-time');
+            if (timeElement) {
+                timeElement.textContent = timeStr;
+            }
+        }
+        setInterval(updateCurrentTime, 60000);
+        updateCurrentTime();
+
+        // Economic status update handler
+        document.addEventListener('DOMContentLoaded', function () {
+            const updateBtn = document.getElementById('update-economic-status-btn');
+            const statusSelect = document.getElementById('economic-status-select');
+
+            if (updateBtn && statusSelect) {
+                updateBtn.addEventListener('click', function () {
+                    const newStatus = statusSelect.value;
+                    const btnText = updateBtn.innerHTML;
+
+                    // Disable button and show loading
+                    updateBtn.disabled = true;
+                    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+
+                    fetch('/api/economic-status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                alert('Error: ' + data.error);
+                                updateBtn.disabled = false;
+                                updateBtn.innerHTML = btnText;
+                            } else {
+                                // Reload page to show updated schedules
+                                window.location.reload();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Failed to update economic status. Please try again.');
+                            updateBtn.disabled = false;
+                            updateBtn.innerHTML = btnText;
+                        });
+                });
+            }
+
+            // Calculate durations for schedule table
+            document.querySelectorAll('.duration-calc').forEach(function (element) {
+                const start = element.getAttribute('data-start');
+                const end = element.getAttribute('data-end');
+
+                if (start && end) {
+                    const startParts = start.split(':');
+                    const endParts = end.split(':');
+                    const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+                    let endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
+                    // Handle midnight crossover
+                    if (endMinutes < startMinutes) {
+                        endMinutes += 24 * 60;
+                    }
+
+                    const duration = endMinutes - startMinutes;
+                    const hours = Math.floor(duration / 60);
+                    const minutes = duration % 60;
+
+                    if (hours > 0) {
+                        element.textContent = hours + 'h ' + minutes + 'm';
+                    } else {
+                        element.textContent = minutes + 'm';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
